@@ -18,6 +18,10 @@ import (
 //   - Enable GPU compositing to match real browser behaviour.
 func applyStealthFlags(opts []chromedp.ExecAllocatorOption) []chromedp.ExecAllocatorOption {
 	return append(opts,
+		// Why: Native Blink engine parameter to disable automation hooks.
+		// Trumps JS-level tampering and prevents navigator.webdriver from being set to true.
+		chromedp.Flag("disable-blink-features", "AutomationControlled"),
+
 		// Why: The "HeadlessChrome" UA string is the simplest bot signal.
 		chromedp.UserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) "+
 			"AppleWebKit/537.36 (KHTML, like Gecko) "+
