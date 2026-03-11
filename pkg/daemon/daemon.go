@@ -15,13 +15,13 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"sync"
 	"time"
 
 	"github.com/David2024patton/iTaKBrowser/pkg/browser"
+	"github.com/David2024patton/iTaKBrowser/pkg/metasearch"
 )
 
 const (
@@ -451,10 +451,15 @@ func (d *Daemon) handleSearch(w http.ResponseWriter, r *http.Request) {
 		fail(w, err)
 		return
 	}
-	
-	// Fast VPS SearXNG instance bypasses Google Bot Detection and aggregates 10+ engines
-	query := url.QueryEscape(req.Text)
-	searchURL := fmt.Sprintf("http://resources-searxng-82271d-145-79-2-67.traefik.me/search?q=%s", query)
+	// Fast native aggregate search bypassing Bot Detection
+	results := metasearch.Search(req.Text)
+	htmlPath, err := metasearch.GenerateLocalHTML(req.Text, results)
+	if err != nil {
+		fail(w, fmt.Errorf("failed to generate html: %w", err))
+		return
+	}
+
+	searchURL := "file://" + filepath.ToSlash(htmlPath)
 	
 	if err := eng.Open(r.Context(), searchURL); err != nil {
 		fail(w, err)
