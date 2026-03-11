@@ -18,6 +18,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -71,6 +72,7 @@ Example workflow:
 		newSessionCmd(),
 		// Navigation
 		newOpenCmd(),
+		newSearchCmd(),
 		newNavCmd(),
 		// Snapshot / Capture
 		newSnapshotCmd(),
@@ -246,6 +248,27 @@ func newOpenCmd() *cobra.Command {
 			}
 			// Check for poisoning warning and print in red.
 			checkPoisonWarning(resp)
+			if cfg.JSONOutput {
+				return printResp(resp)
+			}
+			return nil
+		},
+	}
+}
+
+func newSearchCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "search <query...>",
+		Short: "Search via self-hosted SearXNG (bypasses bot detection, aggregates 10+ engines)",
+		Args:  cobra.MinimumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			query := strings.Join(args, " ")
+			resp, err := post(cfg.DaemonAddr, "/search", map[string]string{
+				"session": cfg.Session, "text": query,
+			})
+			if err != nil {
+				return err
+			}
 			if cfg.JSONOutput {
 				return printResp(resp)
 			}

@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"sync"
@@ -179,6 +180,7 @@ func (d *Daemon) Start() error {
 	mux.HandleFunc("POST /diff/snapshot", d.handleDiffSnapshot)
 	mux.HandleFunc("POST /diff/compare", d.handleDiffCompare)
 	mux.HandleFunc("POST /diff/clear", d.handleDiffClear)
+	mux.HandleFunc("POST /search", d.handleSearch)
 	mux.HandleFunc("POST /storage-inspect", d.handleStorageInspect)
 	mux.HandleFunc("POST /storage-inspect/close", d.handleStorageInspectClose)
 	mux.HandleFunc("POST /a11y", d.handleA11yAudit)
@@ -436,6 +438,29 @@ func (d *Daemon) handleOpen(w http.ResponseWriter, r *http.Request) {
 		response["poisoning_warning"] = "AI recommendation poisoning detected on this page"
 	}
 	ok(w, sid, response)
+}
+
+func (d *Daemon) handleSearch(w http.ResponseWriter, r *http.Request) {
+	req, err := d.decode(r)
+	if err != nil {
+		fail(w, err)
+		return
+	}
+	eng, sid, err := d.getOrCreate(req)
+	if err != nil {
+		fail(w, err)
+		return
+	}
+	
+	// Fast VPS SearXNG instance bypasses Google Bot Detection and aggregates 10+ engines
+	query := url.QueryEscape(req.Text)
+	searchURL := fmt.Sprintf("http://resources-searxng-82271d-145-79-2-67.traefik.me/search?q=%s", query)
+	
+	if err := eng.Open(r.Context(), searchURL); err != nil {
+		fail(w, err)
+		return
+	}
+	ok(w, sid, nil)
 }
 
 func (d *Daemon) handleSnapshot(w http.ResponseWriter, r *http.Request) {
